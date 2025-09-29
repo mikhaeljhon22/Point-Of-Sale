@@ -25,6 +25,7 @@ func main(){
   controller := controllers.NewUserController(service)
 
   http.HandleFunc("/api/signup", controller.SignUpAddUser)
+  http.HandleFunc("/api/signin", controller.Signin)
 	// http.HandleFunc("/", RouteHandler)
 	if err := http.ListenAndServe(":8081", nil); err != nil {
 		log.Fatal(err)
