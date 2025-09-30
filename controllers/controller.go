@@ -21,14 +21,16 @@ type UserController struct {
 }
 
 func NewUserController(s *services.UserService,
-	mailService *services.MailService) *UserController{
-	return &UserController{s: s, mailService: mailService,}
+	mailService *services.MailService,) *UserController{
+	return &UserController{s: s, 
+		mailService: mailService,}
 }
 
-var sharedKey = []byte("sercrethatmaycontainch@r$32chars")
+var SharedKey = []byte("sercrethatmaycontainch@r$32chars")
 
 type TokenClaims struct {
 	TokenClaims string `json:"tokenClaims"`
+	UserID int `json:"userID"`
 }
 
 func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
@@ -99,11 +101,15 @@ func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
 			Password: req.Password,
 		}
 	
+		userID:= c.s.FindUserID(req.Username)
+
+		fmt.Println("user id is", userID)
 	myClaims := TokenClaims{
 		TokenClaims: req.Username,
+		UserID: userID,
 	}
 	
-	token, err := jwt.Sign(jwt.HS256, sharedKey, myClaims, jwt.MaxAge(24* 10 * time.Hour))
+	token, err := jwt.Sign(jwt.HS256, SharedKey, myClaims, jwt.MaxAge(24* 10 * time.Hour))
 	if err != nil {
 		panic(err)
 	}
@@ -134,7 +140,7 @@ func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
 	}
 	jwtToken := partHeader[1]
 
-	verifiedToken, err := jwt.Verify(jwt.HS256, sharedKey, []byte(jwtToken))
+	verifiedToken, err := jwt.Verify(jwt.HS256, SharedKey, []byte(jwtToken))
 	if err != nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return

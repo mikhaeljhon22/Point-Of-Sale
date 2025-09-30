@@ -28,6 +28,11 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 
+func (s *UserService) FindUserID(username string) int{
+	var user models.UsersPos
+	s.db.Where("username = ?", username).First(&user)
+	return user.ID
+}
 
 func (s *UserService) SignUpAddUser(user models.UsersPos) bool {
 	var existingUser models.UsersPos
@@ -44,26 +49,32 @@ func (s *UserService) SignUpAddUser(user models.UsersPos) bool {
 
 func (s *UserService) StoreCodeVerif(username string, code string){
 	var user models.UsersPos
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.db.Model(&user).Where("username = ?", username).Update("code", code)
 }
 func (s *UserService) SigninUser(user models.UsersPos) bool{
-var foundUsers models.UsersPos
-s.db.Where("username = ? AND is_active = ?", user.Username,true).First(&foundUsers)
-checKpW := CheckPasswordHash(user.Password,foundUsers.Password)
-return checKpW
+   var foundUsers models.UsersPos
+   s.mutex.Lock()
+   defer s.mutex.Unlock()
+   s.db.Where("username = ? AND is_active = ?", user.Username,true).First(&foundUsers)
+   checKpW := CheckPasswordHash(user.Password,foundUsers.Password)
+   return checKpW
 }
 
 func (s *UserService) ProfileUser(username string) models.UsersPos{
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	var foundUser models.UsersPos
 	s.db.Where("username = ?", username).First(&foundUser)
 	return foundUser
 }
 
 
-
-
 func (s *UserService) VerifyCode(code string) bool{
 	var user models.UsersPos
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.db.Model(&user).Where("code = ?", code).Update("is_active", true)
 	return true
 }

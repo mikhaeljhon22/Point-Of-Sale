@@ -10,4 +10,5 @@ type UsersPos struct {
 	Code string 
 	IsActive bool `gorm:"default:false"`
 	CreatedAt time.Time
+	Items []ItemsAdd `gorm:"foreignKey:UserID"`
 }
