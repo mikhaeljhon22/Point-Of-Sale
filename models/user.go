@@ -7,5 +7,7 @@ type UsersPos struct {
 	Username string  `gorm:"size:100`
 	Email string  `gorm:"size:100;unique"`
 	Password string 
+	Code string 
+	IsActive bool `gorm:"default:false"`
 	CreatedAt time.Time
 }

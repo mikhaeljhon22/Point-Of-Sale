@@ -12,14 +12,17 @@ import  (
 	"strings"
 	"context"
 	"POS/configs"
+	"github.com/google/uuid"
 )
 
 type UserController struct {
   s *services.UserService
+  mailService *services.MailService
 }
 
-func NewUserController(s *services.UserService) *UserController{
-	return &UserController{s: s}
+func NewUserController(s *services.UserService,
+	mailService *services.MailService) *UserController{
+	return &UserController{s: s, mailService: mailService,}
 }
 
 var sharedKey = []byte("sercrethatmaycontainch@r$32chars")
@@ -58,12 +61,19 @@ func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
 			Password: hashPw,
 		}
 		signup := c.s.SignUpAddUser(user)
+		uuid := uuid.New()
+		meUuid := uuid.String()
+		//send mail confirmation
+		c.s.StoreCodeVerif(data[0].(string),meUuid)
+		c.mailService.SendEmail(data[1].(string),"Confirmation Verification","http://localhost:8081/verif" + meUuid)
+		
 		resp := Response{Message: fmt.Sprintf("%v", signup)}
 		
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
 		e.Emit("Signup",req.Username,req.Email, req.Password)
+
 
 	}
 	
@@ -169,4 +179,19 @@ func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (c *UserController) Verification(w http.ResponseWriter, r *http.Request){
+	const prefix = "/verif/"
+	if !strings.HasPrefix(r.URL.Path, prefix) {
+		http.NotFound(w, r)
+		return
+	}
+
+	pathVerif := strings.TrimPrefix(r.URL.Path, prefix)
+	pathVerif = strings.TrimSuffix(pathVerif, "/")
+
+	c.s.VerifyCode(pathVerif)	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode("success to create account")
 }

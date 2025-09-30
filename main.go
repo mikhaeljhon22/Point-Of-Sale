@@ -23,11 +23,13 @@ func main(){
   db.AutoMigrate(&models.UsersPos{})
 
   service := services.NewUserService(db)
-  controller := controllers.NewUserController(service)
+  mailService := services.NewMailService()
+  controller := controllers.NewUserController(service,mailService)
 
   http.HandleFunc("/api/signup", controller.SignUpAddUser)
   http.HandleFunc("/api/signin", controller.Signin)
   http.HandleFunc("/api/profile", middlewares.JWTVerif(controller.Profile))
+  http.HandleFunc("/verif/",controller.Verification )
   configs.NewRedisClient()
 	// http.HandleFunc("/", RouteHandler)
 	if err := http.ListenAndServe(":8081", nil); err != nil {
