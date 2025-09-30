@@ -48,3 +48,9 @@ s.db.Where("username = ?", user.Username).First(&foundUsers)
 checKpW := CheckPasswordHash(user.Password,foundUsers.Password)
 return checKpW
 }
+
+func (s *UserService) ProfileUser(username string) models.UsersPos{
+	var foundUser models.UsersPos
+	s.db.Where("username = ?", username).First(&foundUser)
+	return foundUser
+}

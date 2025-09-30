@@ -7,6 +7,7 @@ import (
 	"POS/models"
 	"POS/services"
 	"POS/controllers"
+	"POS/middlewares"
 )
 
 
@@ -26,6 +27,8 @@ func main(){
 
   http.HandleFunc("/api/signup", controller.SignUpAddUser)
   http.HandleFunc("/api/signin", controller.Signin)
+  http.HandleFunc("/api/profile", middlewares.JWTVerif(controller.Profile))
+  configs.NewRedisClient()
 	// http.HandleFunc("/", RouteHandler)
 	if err := http.ListenAndServe(":8081", nil); err != nil {
 		log.Fatal(err)
