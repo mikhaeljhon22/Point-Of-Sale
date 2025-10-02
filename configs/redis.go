@@ -11,6 +11,7 @@ func NewRedisClient() *redis.Client {
         Password: "",
         DB:       0,
     })
+
 fmt.Println("success connect to redis")
     return client
 }

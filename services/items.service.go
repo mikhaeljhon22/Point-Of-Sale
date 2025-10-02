@@ -18,7 +18,6 @@ func NewItemsService(db *gorm.DB) *ItemsService{
 
 func (s *ItemsService) AddItem(items models.ItemsAdd) string{
 find := s.db.Where("item_name = ?", items.Item_name).First(&items)
-fmt.Println(find.RowsAffected)
    if(find.RowsAffected == 0){
 	s.db.Create(&items)
 	fmt.Println("ini")
@@ -27,5 +26,51 @@ fmt.Println(find.RowsAffected)
 	return "item already exists"
    }
 }
-
+func (s *ItemsService) ShowAllProducts(userID int) []models.ItemsAdd{
+	var items []models.ItemsAdd
 	
+	s.db.Where("user_id = ? ", userID).Find(&items)
+	return items
+} 	
+
+func (s *ItemsService) Totaling(userID int){
+	var total float64
+	s.db.Raw("SELECT SUM(amount::numeric * price::numeric) FROM total_products WHERE user_id = ?", userID).Scan(&total)
+	fmt.Println(total)
+}
+
+func (s *ItemsService) OrderingAdd(orderItems models.TotalProducts) string{
+	var item models.ItemsAdd
+	var order models.TotalProducts
+
+	find := s.db.Where("item_name = ?", orderItems.Item_name).First(&item)
+	fmt.Println("row affected", find.RowsAffected)
+	if(find.RowsAffected == 1){
+		itemID := item.ID
+		random_code := item.Random_code
+
+		check := s.db.Where("id = ? AND stock >= ?", itemID, orderItems.Amount).First(&item)
+		
+		if(check.RowsAffected == 1){
+		checkIfexistsProduct := s.db.Where("item_id = ? AND deleted = ?", itemID, false).First(&order)
+
+		if(checkIfexistsProduct.RowsAffected == 0){
+	tp := &models.TotalProducts{
+	UserID: orderItems.UserID,
+    Item_name:  orderItems.Item_name,
+    Amount:     orderItems.Amount,
+    ItemID:     itemID,
+    Random_code: random_code,
+      }
+      s.db.Create(tp)
+	}else{
+		return "already exists product"
+	}
+	}else{
+		return "amount not enough"
+	}
+	return "success add item"
+	}else{
+		return "not found product"
+	}
+}

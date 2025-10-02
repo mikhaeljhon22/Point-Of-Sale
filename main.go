@@ -20,7 +20,8 @@ func main(){
 
 
   db := configs.ConnectPostgre()
-  db.AutoMigrate(&models.UsersPos{},&models.ItemsAdd{})
+  db.AutoMigrate(&models.UsersPos{},&models.ItemsAdd{},
+     &models.TotalProducts{})
 
   service := services.NewUserService(db)
   mailService := services.NewMailService()
@@ -32,11 +33,12 @@ func main(){
   http.HandleFunc("/api/signin", controller.Signin)
  // http.HandleFunc("/api/profile", middlewares.JWTVerif(controller.Profile))
   http.HandleFunc("/verif/",controller.Verification)
-  http.HandleFunc("/api/add/item", itemsController.ItemAdd)
   
   routes := map[string]http.HandlerFunc{
     "/api/profile": controller.Profile,
-    "api/add/item": itemsController.ItemAdd,
+    "/api/add/item": itemsController.ItemAdd,
+    "/api/get/all/product": itemsController.GetAllProducts,
+    "/api/add/order": itemsController.OrderingAdd,
   }
 
   for path, handler := range routes{

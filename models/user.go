@@ -11,4 +11,6 @@ type UsersPos struct {
 	IsActive bool `gorm:"default:false"`
 	CreatedAt time.Time
 	Items []ItemsAdd `gorm:"foreignKey:UserID"`
+	Total []TotalProducts `gorm:"foreignKey:UserID"`
+
 }
