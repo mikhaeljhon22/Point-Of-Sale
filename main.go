@@ -39,6 +39,7 @@ func main(){
     "/api/add/item": itemsController.ItemAdd,
     "/api/get/all/product": itemsController.GetAllProducts,
     "/api/add/order": itemsController.OrderingAdd,
+    "/api/totaling": itemsController.TotalingProducts,
   }
 
   for path, handler := range routes{

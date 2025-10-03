@@ -4,6 +4,7 @@ import (
 	"sync"
 	"POS/models"
 	"fmt"
+	"strconv"
 
 )
 
@@ -32,13 +33,6 @@ func (s *ItemsService) ShowAllProducts(userID int) []models.ItemsAdd{
 	s.db.Where("user_id = ? ", userID).Find(&items)
 	return items
 } 	
-
-func (s *ItemsService) Totaling(userID int){
-	var total float64
-	s.db.Raw("SELECT SUM(amount::numeric * price::numeric) FROM total_products WHERE user_id = ?", userID).Scan(&total)
-	fmt.Println(total)
-}
-
 func (s *ItemsService) OrderingAdd(orderItems models.TotalProducts) string{
 	var item models.ItemsAdd
 	var order models.TotalProducts
@@ -55,14 +49,18 @@ func (s *ItemsService) OrderingAdd(orderItems models.TotalProducts) string{
 		checkIfexistsProduct := s.db.Where("item_id = ? AND deleted = ?", itemID, false).First(&order)
 
 		if(checkIfexistsProduct.RowsAffected == 0){
+	priceInt,_:= strconv.Atoi(item.Price)
 	tp := &models.TotalProducts{
 	UserID: orderItems.UserID,
     Item_name:  orderItems.Item_name,
     Amount:     orderItems.Amount,
     ItemID:     itemID,
     Random_code: random_code,
+	Price: priceInt  * orderItems.Amount,
       }
       s.db.Create(tp)
+	  s.db.Model(&item).Where("id = ?", item.ID).Update("stock", item.Stock - orderItems.Amount)
+
 	}else{
 		return "already exists product"
 	}
@@ -73,4 +71,12 @@ func (s *ItemsService) OrderingAdd(orderItems models.TotalProducts) string{
 	}else{
 		return "not found product"
 	}
+}
+
+func (s *ItemsService) TotalingProducts(userID int) float64{
+	var order models.TotalProducts
+    var totaling float64
+	s.db.Raw("SELECT SUM(price::numeric) FROM total_products WHERE user_id = ? AND deleted = ? ", userID, false).Scan(&totaling)
+	s.db.Model(&order).Where("user_id = ? AND deleted = ?", userID,false).Update("deleted", true)
+	return totaling
 }

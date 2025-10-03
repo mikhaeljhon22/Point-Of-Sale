@@ -161,3 +161,37 @@ func (c *ItemsController) OrderingAdd(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{Message: order})
 }
+
+func (c *ItemsController) TotalingProducts(w  http.ResponseWriter, r *http.Request){
+	type Response struct {
+		Message float64 `json:"message"`
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	    partHeader := strings.Split(authHeader, "Bearer ")
+	if len(partHeader) < 2 {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	jwtToken := partHeader[1]
+
+	verifiedToken, err := jwt.Verify(jwt.HS256, SharedKey, []byte(jwtToken))
+	if err != nil {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var claims TokenClaims
+	err = verifiedToken.Claims(&claims)
+	if err != nil {
+		http.Error(w, "invalid claims", http.StatusUnauthorized)
+		return
+	}
+
+	
+	userID := claims.UserID
+	total := c.i.TotalingProducts(userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{Message: total})
+}
