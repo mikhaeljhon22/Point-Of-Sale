@@ -1,4 +1,4 @@
-package models 
+package entitys 
 
 type TotalProducts struct {
 	ID int `gorm:"primaryKey"`

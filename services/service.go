@@ -2,7 +2,7 @@ package services
 import (
 	"gorm.io/gorm"
 	"sync"
-	"POS/models"
+	"POS/entitys"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,13 +29,13 @@ func CheckPasswordHash(password, hash string) bool {
 
 
 func (s *UserService) FindUserID(username string) int{
-	var user models.UsersPos
+	var user entitys.UsersPos
 	s.db.Where("username = ?", username).First(&user)
 	return user.ID
 }
 
-func (s *UserService) SignUpAddUser(user models.UsersPos) bool {
-	var existingUser models.UsersPos
+func (s *UserService) SignUpAddUser(user entitys.UsersPos) bool {
+	var existingUser entitys.UsersPos
 	findUsername :=  s.db.Where("username = ?", user.Username).Or("email = ?", user.Email).Find(&existingUser)
 	if(findUsername.RowsAffected == 1){
 		return false
@@ -48,13 +48,13 @@ func (s *UserService) SignUpAddUser(user models.UsersPos) bool {
 }
 
 func (s *UserService) StoreCodeVerif(username string, code string){
-	var user models.UsersPos
+	var user entitys.UsersPos
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.db.Model(&user).Where("username = ?", username).Update("code", code)
 }
-func (s *UserService) SigninUser(user models.UsersPos) bool{
-   var foundUsers models.UsersPos
+func (s *UserService) SigninUser(user entitys.UsersPos) bool{
+   var foundUsers entitys.UsersPos
    s.mutex.Lock()
    defer s.mutex.Unlock()
    s.db.Where("username = ? AND is_active = ?", user.Username,true).First(&foundUsers)
@@ -62,17 +62,17 @@ func (s *UserService) SigninUser(user models.UsersPos) bool{
    return checKpW
 }
 
-func (s *UserService) ProfileUser(username string) models.UsersPos{
+func (s *UserService) ProfileUser(username string) entitys.UsersPos{
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	var foundUser models.UsersPos
+	var foundUser entitys.UsersPos
 	s.db.Where("username = ?", username).First(&foundUser)
 	return foundUser
 }
 
 
 func (s *UserService) VerifyCode(code string) bool{
-	var user models.UsersPos
+	var user entitys.UsersPos
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.db.Model(&user).Where("code = ?", code).Update("is_active", true)

@@ -1,132 +1,130 @@
-package controllers 
+package controllers
 
-import  (
+import (
 	"encoding/json"
 	"net/http"
 	"POS/services"
 	"github.com/olebedev/emitter"
-	"POS/models"
+	"POS/entitys"
 	"fmt"
 	"time"
 	"github.com/kataras/jwt"
 	"strings"
 	"context"
 	"POS/configs"
+	"POS/aggregate"
 	"github.com/google/uuid"
 )
 
 type UserController struct {
-  s *services.UserService
-  mailService *services.MailService
+	s           *services.UserService
+	mailService *services.MailService
+	d *services.PersonService
 }
 
 func NewUserController(s *services.UserService,
-	mailService *services.MailService,) *UserController{
-	return &UserController{s: s, 
-		mailService: mailService,}
+	mailService *services.MailService, d *services.PersonService) *UserController {
+	return &UserController{s: s,
+		mailService: mailService,d: d}
 }
 
 var SharedKey = []byte("sercrethatmaycontainch@r$32chars")
 
 type TokenClaims struct {
 	TokenClaims string `json:"tokenClaims"`
-	UserID int `json:"userID"`
+	UserID      int    `json:"userID"`
 }
 
-func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
-	
+func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request) {
+
 	type Request struct {
 		Username string `json:"username"`
-		Email string `json:"email"`
+		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	
+
 	type Response struct {
 		Message string `json:"message"`
 	}
-	
+
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	
+
 	e := &emitter.Emitter{}
-	e.On("Signup", func(event *emitter.Event){
+	e.On("Signup", func(event *emitter.Event) {
 		data := event.Args
 		password := data[2].(string)
-		
-		hashPw,_ := services.HashPassword(password)
-		user := models.UsersPos{
+
+		hashPw, _ := services.HashPassword(password)
+		user := entitys.UsersPos{
 			Username: data[0].(string),
-			Email: data[1].(string),
+			Email:    data[1].(string),
 			Password: hashPw,
 		}
 		signup := c.s.SignUpAddUser(user)
 		uuid := uuid.New()
 		meUuid := uuid.String()
-		//send mail confirmation
-		c.s.StoreCodeVerif(data[0].(string),meUuid)
-		c.mailService.SendEmail(data[1].(string),"Confirmation Verification","http://localhost:8081/verif" + meUuid)
-		
+		// send mail confirmation
+		c.s.StoreCodeVerif(data[0].(string), meUuid)
+		c.mailService.SendEmail(data[1].(string), "Confirmation Verification", "http://localhost:8081/verif"+meUuid)
+
 		resp := Response{Message: fmt.Sprintf("%v", signup)}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
-		e.Emit("Signup",req.Username,req.Email, req.Password)
+	e.Emit("Signup", req.Username, req.Email, req.Password)
+}
 
-
+func (c *UserController) Signin(w http.ResponseWriter, r *http.Request) {
+	type Response struct {
+		Message string `json:"message"`
 	}
-	
-	
-	func (c *UserController) Signin(w http.ResponseWriter, r *http.Request){
-		type Response struct {
-			Message string `json:"message"`
-		}
-		
-		type Request struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		}
-		
-		var req Request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		
-		user := models.UsersPos{
-			Username: req.Username,
-			Password: req.Password,
-		}
-	
-		userID:= c.s.FindUserID(req.Username)
 
-		fmt.Println("user id is", userID)
+	type Request struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	var req Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	user := entitys.UsersPos{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
+	userID := c.s.FindUserID(req.Username)
+
+	fmt.Println("user id is", userID)
 	myClaims := TokenClaims{
 		TokenClaims: req.Username,
-		UserID: userID,
+		UserID:      userID,
 	}
-	
-	token, err := jwt.Sign(jwt.HS256, SharedKey, myClaims, jwt.MaxAge(24* 10 * time.Hour))
+
+	token, err := jwt.Sign(jwt.HS256, SharedKey, myClaims, jwt.MaxAge(24*10*time.Hour))
 	if err != nil {
 		panic(err)
 	}
-	
+
 	login := c.s.SigninUser(user)
-	if(login == true){
-		w.Header().Set("Authorization", "Bearer " + string(token))
+	if login == true {
+		w.Header().Set("Authorization", "Bearer "+string(token))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode("success login")
-		}else{
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode("Failed to login")
-			
-		}
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode("Failed to login")
 	}
-	
-	func (c *UserController) Profile(w http.ResponseWriter, r *http.Request) {
+}
+
+func (c *UserController) Profile(w http.ResponseWriter, r *http.Request) {
 	type Response struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
@@ -187,7 +185,7 @@ func (c *UserController) SignUpAddUser(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (c *UserController) Verification(w http.ResponseWriter, r *http.Request){
+func (c *UserController) Verification(w http.ResponseWriter, r *http.Request) {
 	const prefix = "/verif/"
 	if !strings.HasPrefix(r.URL.Path, prefix) {
 		http.NotFound(w, r)
@@ -197,7 +195,24 @@ func (c *UserController) Verification(w http.ResponseWriter, r *http.Request){
 	pathVerif := strings.TrimPrefix(r.URL.Path, prefix)
 	pathVerif = strings.TrimSuffix(pathVerif, "/")
 
-	c.s.VerifyCode(pathVerif)	
+	c.s.VerifyCode(pathVerif)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode("success to create account")
+}
+
+
+func (c *UserController) TestDDD(w http.ResponseWriter, r *http.Request){
+	type Request struct {
+		Name string `json:"name"`
+		Age int `json:"age"`
+		Address string `json:"address"`
+		City string `json:"city"`
+	}
+	var req Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	aggregate:= aggregate.NewAggregate(req.Name,req.Age,req.Address,req.City)
+	fmt.Println(c.d.AddService(aggregate))
 }
